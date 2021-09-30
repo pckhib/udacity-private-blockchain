@@ -75,7 +75,12 @@ class Blockchain {
       self.chain.push(block);
       self.height++;
 
-      resolve(block);
+      const errors = await self.validateChain();
+      if (errors.length == 0) {
+        resolve(block);
+      } else {
+        reject("Error validating chain");
+      }
     });
   }
 
@@ -125,8 +130,12 @@ class Blockchain {
       if (currentTime - time < 5 * 60) {
         if (bitcoinMessage.verify(message, address, signature)) {
           const block = new BlockClass.Block({ owner: address, star: star });
-          const createdBlock = await self._addBlock(block);
-          resolve(createdBlock);
+          try {
+            const createdBlock = await self._addBlock(block);
+            resolve(createdBlock);
+          } catch {
+            reject(null);
+          }
         } else {
           reject(null);
         }
@@ -209,9 +218,11 @@ class Blockchain {
           errorLog.push(`Block not valid: ${i}`);
         }
 
-        const previousBlockHash = self.chain[i + 1].previousBlockHash;
-        if (block.hash != previousBlockHash) {
-          errorLog.push(`Previous block hash not valid: ${i}`);
+        if (block.height > 0) {
+          const previousBlockHash = self.chain[i + 1].previousBlockHash;
+          if (block.hash != previousBlockHash) {
+            errorLog.push(`Previous block hash not valid: ${i}`);
+          }
         }
       }
 
